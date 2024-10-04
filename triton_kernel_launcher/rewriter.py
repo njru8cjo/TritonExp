@@ -1,5 +1,5 @@
 '''
-This script only supports single kernel currently.
+This script only supports single kernel currently and does not always work.
 To support multiple kernels,
 it needs to support multiple kernel srcs in driver.py
 and scope analysis in rewriter.py (this file).
@@ -87,7 +87,10 @@ class RewriteKernel(ast.NodeTransformer):
                                             ctx=ast.Load())
             node.value.args = [ast.Name(id='grid', ctx=ast.Load())] + [ast.Constant(value=1)] * 2 + node.value.args
             for element in node.value.keywords:
-                removedConstant[element.arg] = element.value.value
+                if hasattr(element.value, "value"):
+                    removedConstant[element.arg] = element.value.value
+                else:
+                    print("Please fix the following variable: " + element.arg)
             node.value.keywords = []
             return node
         return node
@@ -166,6 +169,41 @@ class RewriteCeilDiv(ast.NodeTransformer):
             node.value = callFunction
         return node
 
+# Rewrite the following lines
+# BLOCK_SIZE = triton.next_power_of_2(n_cols)
+# -> BLOCK_SIZE = driver.next_power_of_2(n_cols)
+class RewriteNext_power_of_2(ast.NodeTransformer):
+    def visit_Assign(self, node):
+        callFunction = False
+        if not hasattr(node, "value"):
+            return node
+        if True:
+            if not hasattr(node.value, "func"):
+                return node
+            if not hasattr(node.value.func, "value"):
+                return node
+            if not hasattr(node.value.func.value, "id") or not node.value.func.value.id == "triton":
+                return node
+            if not hasattr(node.value.func, "attr") or not node.value.func.attr == "next_power_of_2":
+                return node
+            if not hasattr(node.value, "args"):
+                return node
+            for index in range(len(node.value.args)):
+                element = node.value.args[index]
+                if not hasattr(element, "slice"):
+                    continue
+                if not hasattr(element.slice, "value") or not element.slice.value in removedConstant:
+                    continue
+                node.value.args[index] = ast.Constant(value=removedConstant[element.slice.value])
+                break
+            node.value.func.value.id = "driver"
+            node.value.func.attr = "next_power_of_2"
+            callFunction = node.value
+            return node
+        if callFunction:
+            node.value = callFunction
+        return node
+
 '''
         Assign(
             targets=[
@@ -220,13 +258,16 @@ stages = [RemoveTritonImport(),
           RemoveTritonExpression(),
           RemoveTritonFunctionDefinition(),
           RewriteKernel(),
-          RewriteCeilDiv()]
+          RewriteCeilDiv(),
+          RewriteNext_power_of_2()]
 for stage in stages:
     stage.visit(astObj)
 
 #print(ast.dump(astObj, indent=4))
 
 fout.write(ast.unparse(astObj))
+
+print("Please check if grid and lambda need to be fixed.")
 
 '''
 removingTritonJit = False

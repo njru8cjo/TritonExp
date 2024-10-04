@@ -57,7 +57,7 @@ def add(x: torch.Tensor, y: torch.Tensor):
 #@profile
 def test():
     torch.manual_seed(0)
-    size = 98432000
+    size = 9843200
     x = torch.rand(size, device="cpu")
     y = torch.rand(size, device="cpu")
     torch_output = x + y

@@ -5,7 +5,13 @@ import sysconfig
 def ceildiv(a, b):
     return -(a // -b)
 
+def next_power_of_2(a):
+    if a == 1:
+        return 1
+    return int("1" + "0" * (len(bin(a - 1)) - 2), 2)
+
 def compile():
+    return
     # This function was renamed and made public in Python 3.10
     if hasattr(sysconfig, 'get_default_scheme'):
         scheme = sysconfig.get_default_scheme()
@@ -16,21 +22,20 @@ def compile():
     if scheme == 'posix_local':
         scheme = 'posix_prefix'
     py_include_dir = sysconfig.get_paths(scheme=scheme)["include"]
-    include_dir = "/home/ywshao/triton_shared/triton/.venv/lib/python3.12/site-packages/triton/backends/triton_shared/include"
+    include_dir = "/home/ywshao/Desktop/riscv/include"
 
-    asm_src_path = os.path.join("/home/ywshao", "kernel.s")
-    launcher_src_path = os.path.join("/home/ywshao", "main.cxx")
+    asm_src_path = os.path.join("/home/ywshao/Desktop/riscv", "bin.s")
+    launcher_src_path = os.path.join("/home/ywshao/Desktop/riscv", "main.cxx")
 
     # Compile it together.
     subprocess.check_call([
-        "/home/ywshao/llvm-project/build/bin/clang", launcher_src_path, asm_src_path,
-        "--target=riscv64-linux-gnu", "-march=rv64gc",
-        "-I/usr/riscv64-linux-gnu/include", "-L/usr/riscv64-linux-gnu/lib",
+        "clang", launcher_src_path, asm_src_path,
         f"-I{py_include_dir}", f"-I{include_dir}",
         "-shared", "-fPIC", "-fopenmp", "-o", so_path, "-lstdc++"
     ])
 
 def launch(gridX, gridY, gridZ, *args):
+    print(os.environ.get('LD_LIBRARY_PATH'))
     name = "__triton_shared_ref_cpu_kernel_launcher"
     spec = importlib.util.spec_from_file_location(name, so_path)
     mod = importlib.util.module_from_spec(spec)
@@ -40,6 +45,6 @@ def launch(gridX, gridY, gridZ, *args):
                None, None,
                *args)
 
-so_path = os.path.join("/home/ywshao", "kernel.so")
-clang_path = os.path.join("/home/ywshao", "llvm-project/build/bin/clang")
-compile()
+so_path = os.path.join("/home/ywshao/Desktop/riscv", "kernel.so")
+clang_path = os.path.join("clang")
+#compile()
